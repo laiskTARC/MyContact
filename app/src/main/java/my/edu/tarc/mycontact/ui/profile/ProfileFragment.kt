@@ -14,6 +14,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
@@ -34,6 +35,11 @@ class ProfileFragment : Fragment(), MenuProvider {
 
     val profileViewModel: ProfileViewModel by viewModels()
     private lateinit var myPreference: SharedPreferences
+
+    val getContent = registerForActivityResult(
+        ActivityResultContracts.GetContent()){
+        binding.imageViewProfile.setImageURI(it)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +62,9 @@ class ProfileFragment : Fragment(), MenuProvider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         myPreference = requireActivity().getPreferences(Context.MODE_PRIVATE)
+
+        readProfilePicture()
+
 
         with(profileViewModel.profile.value) {
             this!!.name = myPreference.getString(getString(R.string.name), "").toString()
@@ -95,11 +104,16 @@ class ProfileFragment : Fragment(), MenuProvider {
             }
         }//End of buttonSave
 
+        binding.imageViewProfile.setOnClickListener{
+            getContent.launch("image/*")
+        }
+
     }//end of onViewCreated
 
     override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
         menu.findItem(R.id.action_settings).setVisible(false)
         menu.findItem(R.id.action_profile).setVisible(false)
+        menu.findItem(R.id.action_about_us).setVisible(false)
     }
 
     override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
@@ -109,5 +123,40 @@ class ProfileFragment : Fragment(), MenuProvider {
 
         return true
     }
+
+    private fun saveProfilePicture() {
+        val filename = "profile.png"
+        val file = File(this.context?.filesDir, filename)
+
+        val bd = binding.imageViewProfile.getDrawable() as BitmapDrawable
+        val bitmap = bd.bitmap
+        val outputStream: OutputStream
+
+        try{
+            outputStream = FileOutputStream(file)
+            bitmap.compress(Bitmap.CompressFormat.PNG, 50, outputStream)
+            outputStream.flush()
+            outputStream.close()
+        }catch (e: FileNotFoundException){
+            e.printStackTrace()
+        }
+    }
+
+    private fun readProfilePicture(){
+        val filename = "profile.png"
+        val file = File(this.context?.filesDir, filename)
+
+        try{
+            if(!file.exists()){
+                binding.imageViewProfile.setImageResource(R.drawable.profile)
+            }else{
+                val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                binding.imageViewProfile.setImageBitmap(bitmap)
+            }
+        }catch (e: FileNotFoundException){
+            e.printStackTrace()
+        }
+    }
+
 
 }
